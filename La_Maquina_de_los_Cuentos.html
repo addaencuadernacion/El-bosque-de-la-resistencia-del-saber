@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Máquina de los Cuentos</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#0f172a;color:white}
+.screen{padding:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}
+.card{padding:20px;border-radius:18px;cursor:pointer;background:linear-gradient(135deg,#541388,#FFD400);color:#fff}
+button{padding:10px 16px;border:none;border-radius:10px;cursor:pointer}
+.hidden{display:none}
+#progress{height:14px;background:#333;border-radius:10px;overflow:hidden}
+#bar{height:100%;width:0;background:#22c55e}
+.option{display:block;margin:8px 0;padding:10px;background:#1e293b;border-radius:10px}
+#timerBar{height:10px;background:#ef4444;width:100%}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center}
+.modal-content{background:#111827;padding:20px;border-radius:16px;max-width:500px}
+</style>
+</head>
+<body>
+<div id="home" class="screen">
+<h1>📖 La Máquina de los Cuentos</h1>
+<h3>Donde las historias cobran vida</h3>
+<p>Embárcate en una aventura por historias llenas de magia, personajes sorprendentes y tradiciones de Colombia.</p>
+<button onclick="toggleSound()">🔊 Sonido</button>
+<div class="cards" id="worlds"></div>
+</div>
+
+<div id="lesson" class="screen hidden"></div>
+
+<div id="game" class="screen hidden">
+<h2 id="levelTitle"></h2>
+<div>Puntaje: <span id="score">0</span> | ❤️ <span id="lives">3</span></div>
+<div id="progress"><div id="bar"></div></div>
+<div id="timerBar"></div>
+<p id="fragment"></p>
+<p><b>Pista:</b> <span id="hint"></span></p>
+<h3 id="question"></h3>
+<div id="options"></div>
+</div>
+
+<div class="modal" id="modal">
+<div class="modal-content">
+<h2 id="result"></h2>
+<p id="explanation"></p>
+<button onclick="nextStep()">Continuar</button>
+</div>
+</div>
+
+<script>
+const worlds=[
+{name:"La Biblioteca Encantada",icon:"📚",theme:"Reconocimiento de cuentos"},
+{name:"La Casa de las Historias",icon:"🏠",theme:"Inicio, nudo y desenlace"},
+{name:"El Camino de las Aventuras",icon:"🛤️",theme:"Secuencias"},
+{name:"Los Detectives del Cuento",icon:"🔎",theme:"Inferencias"},
+{name:"El Bosque de los Personajes",icon:"🌳",theme:"Personajes"},
+{name:"El Taller de las Palabras Mágicas",icon:"✨",theme:"Figuras literarias"}
+];
+
+const levels=[];
+worlds.forEach((w,wi)=>{
+ for(let i=1;i<=5;i++){
+  levels.push({
+   world:wi,
+   mission:"Misión "+i,
+   fragment:"En un pueblo colombiano, Ana encontró un cuento mágico.",
+   hint:"Piensa en la historia.",
+   question:"¿Quién encontró el cuento?",
+   options:["Ana","Pedro","Luna"],
+   correct:0,
+   explanation:"Ana es la protagonista mencionada.",
+   remember:"Leer con atención ayuda a comprender.",
+   goal:"Comprender cuentos."
+  });
+ }
+});
+
+let currentWorld=0,currentLevel=0,score=0,lives=3,sound=true,timer,intTime=25;
+
+function renderWorlds(){
+ const c=document.getElementById('worlds');
+ worlds.forEach((w,i)=>{
+  c.innerHTML+=`<div class="card" onclick="openLesson(${i})"><h2>${w.icon}</h2><h3>${w.name}</h3><p>${w.theme}</p></div>`;
+ });
+}
+renderWorlds();
+
+function openLesson(i){
+ currentWorld=i;
+ home.classList.add('hidden');
+ lesson.classList.remove('hidden');
+ lesson.innerHTML=`<h1>${worlds[i].icon} ${worlds[i].name}</h1>
+ <p>${worlds[i].theme}</p>
+ <div style="background:#222;padding:15px;border-radius:12px">Clave didáctica: leer, imaginar y comprender.</div>
+ <button onclick="startWorld()">Comenzar Mundo</button>`;
+}
+
+function startWorld(){
+ currentLevel=currentWorld*5;
+ lesson.classList.add('hidden');
+ game.classList.remove('hidden');
+ loadLevel();
+}
+
+function loadLevel(){
+ let l=levels[currentLevel];
+ levelTitle.textContent=l.mission;
+ fragment.textContent=l.fragment;
+ hint.textContent=l.hint;
+ question.textContent=l.question;
+ options.innerHTML='';
+ l.options.forEach((o,i)=>{
+  options.innerHTML+=`<button class="option" onclick="answer(${i})">${o}</button>`;
+ });
+ bar.style.width=((currentLevel+1)/levels.length*100)+"%";
+ startTimer();
+}
+
+function answer(i){
+ const l=levels[currentLevel];
+ clearInterval(timer);
+ if(i===l.correct){score+=10;showModal(true,l.explanation);beep(600)}
+ else{lives--;showModal(false,l.explanation);beep(200)}
+ scoreEl();
+}
+
+function scoreEl(){
+ score.textContent=score;
+ livesEl=document.getElementById('lives');
+ livesEl.textContent=lives;
+}
+
+function showModal(ok,msg){
+ result.textContent=ok?"✅ Correcto":"❌ Intenta nuevamente";
+ explanation.textContent=msg;
+ modal.style.display='flex';
+}
+
+function nextStep(){
+ modal.style.display='none';
+ currentLevel++;
+ if(currentLevel>=levels.length||lives<=0){
+  alert("Juego terminado. Puntaje: "+score);
+  location.reload();
+ }else loadLevel();
+}
+
+function startTimer(){
+ let t=intTime;
+ timerBar.style.width='100%';
+ clearInterval(timer);
+ timer=setInterval(()=>{
+  t--;
+  timerBar.style.width=(t/intTime*100)+'%';
+  if(t<=0){
+   clearInterval(timer);
+   lives--;
+   showModal(false,"Se acabó el tiempo.");
+  }
+ },1000);
+}
+
+function toggleSound(){sound=!sound;}
+
+function beep(freq){
+ if(!sound)return;
+ const ctx=new (window.AudioContext||window.webkitAudioContext)();
+ const o=ctx.createOscillator();
+ const g=ctx.createGain();
+ o.connect(g); g.connect(ctx.destination);
+ o.frequency.value=freq;
+ o.start();
+ g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.2);
+ o.stop(ctx.currentTime+0.2);
+}
+</script>
+</body>
+</html>
